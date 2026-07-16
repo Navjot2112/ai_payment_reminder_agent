@@ -1,13 +1,14 @@
 import csv
 import pandas as pd
 from datetime import date, datetime
-from database import get_connection
 from dotenv import load_dotenv
+from database import get_all_messages
 import os
 from twilio.rest import Client
 from make_call import initiate_call
 
 load_dotenv()
+business_id = 1 
 
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
@@ -20,10 +21,41 @@ NGROK_URL = "https://oink-falcon-copartner.ngrok-free.dev"  # update each sessio
 
 
 def get_all_messages_df():
-    conn = get_connection()
-    df = pd.read_sql_query("SELECT * FROM messages", conn)
-    conn.close()
+    rows = get_all_messages(business_id=business_id)
+    columns = ["id", "business_id", "customer_name", "phone", "direction",
+               "message_text", "classification", "timestamp"]
+    df = pd.DataFrame(rows, columns=columns)
     return df
+
+    rename_map = {
+        "customerName": "customer_name",
+        "customer": "customer_name",
+        "phone_number": "phone",
+        "direction_type": "direction",
+        "message": "message_text",
+        "text": "message_text",
+        "classification_status": "classification",
+        "created_at": "timestamp",
+        "sent_at": "timestamp",
+    }
+    df = df.rename(columns=rename_map)
+
+    expected_columns = [
+        "id",
+        "business_id",
+        "customer_name",
+        "phone",
+        "direction",
+        "message_text",
+        "classification",
+        "timestamp",
+    ]
+
+    for col in expected_columns:
+        if col not in df.columns:
+            df[col] = None
+
+    return df[expected_columns]
 
 def notify_owner(red_customers):
     if not red_customers:

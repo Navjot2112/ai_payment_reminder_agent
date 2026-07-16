@@ -6,28 +6,15 @@ import pandas as pd
 from groq import Groq
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import json
-from groq import Groq
+
 
 load_dotenv()
 
 app = Flask(__name__)
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-
+business_id = 1
 
 def extract_intent(message_text):
-    prompt = f"""Classify this reply about an overdue payment into exactly one category: Paid, Promise, Dispute, or Unclear.
-Reply with ONLY valid JSON: {{"intent": "..."}}
-
-Message: "{message_text}" """
-
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}
-    )
-    return json.loads(response.choices[0].message.content)
-def classify_reply(message_text):
     prompt = f"""Classify this WhatsApp reply from a customer about an overdue payment into exactly one category: Paid, Promise, Dispute, or Unclear.
 
 Examples:
@@ -37,20 +24,19 @@ Message: "haan bhai kal kar dunga" → Promise
 Message: "this amount seems wrong" → Dispute
 Message: "who is this" → Unclear
 
-Now classify this message. Reply with ONLY the single category word, nothing else.
+Reply with ONLY valid JSON in this exact format: {{"intent": "..."}}
 
 Message: "{message_text}" """
 
     response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
     )
-
-    category = response.choices[0].message.content.strip()
-    return category
+    return json.loads(response.choices[0].message.content)
 
 def get_customer_name(phone):
-    bills = pd.read_csv("bills.csv")
+    bills = pd.read_csv("bills.csv" , dtype={"phone": str})
     bills["phone_clean"] = bills["phone"].astype(str).str.replace("+", "", regex=False)
     match = bills[bills["phone_clean"] == phone]
     if len(match) > 0:
@@ -64,7 +50,7 @@ def whatsapp_reply():
     sender_number = request.form.get("From")
     clean_phone = sender_number.replace("whatsapp:", "").replace("+", "")
 
-    category = classify_reply(incoming_message)
+    category = extract_intent(incoming_message).get("intent")
     customer_name = get_customer_name(clean_phone)
 
     save_message(
@@ -72,7 +58,8 @@ def whatsapp_reply():
         phone=clean_phone,
         direction="incoming",
         message_text=incoming_message,
-        classification=category
+        classification=category,
+        business_id=business_id
     )
 
     print(f"From {customer_name} ({sender_number}): '{incoming_message}' → classified as: {category}")

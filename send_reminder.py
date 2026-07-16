@@ -10,6 +10,7 @@ load_dotenv()
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 from_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+business_id = 1
 
 client = Client(account_sid, auth_token)
 
@@ -44,7 +45,7 @@ def build_message(row):
     else:
         return None
 
-bills = pd.read_csv("bills.csv")
+bills = pd.read_csv("bills.csv", dtype={"phone": str})
 bills["due_date"] = pd.to_datetime(bills["due_date"])
 bills["days_late"] = bills.apply(calculate_days_late, axis=1)
 bills["status"] = bills["days_late"].apply(get_status)
@@ -64,10 +65,11 @@ for index, row in bills.iterrows():
     )
 
     save_message(
-        customer_name=row["customer_name"],
-        phone=row["phone"],
-        direction="outgoing",
-        message_text=message_text
-    )
+    business_id=business_id,
+    customer_name=row["customer_name"],
+    phone=row["phone"],
+    direction="outgoing",
+    message_text=message_text
+)
 
     print(f"Sent to {row['customer_name']} ({row['status']}) — SID: {message.sid}")
