@@ -1,5 +1,0 @@
-customer_name,invoice_no,amount,due_date,days_late,status
-Sahib Traders,INV001,15000,2026-06-20,21,Urgent
-Ram Enterprises,INV002,8500,2026-07-05,6,Mild
-Kumar & Sons,INV003,22000,2026-07-10,1,Mild
-Modern Hardware,INV004,5000,2026-07-15,-4,Not Due
